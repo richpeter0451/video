@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>扫码有惊喜</title>
+  <!-- ========== CDN 资源（国内可访问） ========== -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.staticfile.net/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    /* ==================== 全局样式 ==================== */
+    * { -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0;
+      min-height: 100vh; min-height: 100dvh;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(160deg, #0a0a2e 0%, #1a1a4e 40%, #0d0d3d 100%);
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* ==================== 背景粒子装饰 ==================== */
+    .bg-particle {
+      position: fixed; pointer-events: none; z-index: 0;
+      width: 4px; height: 4px; border-radius: 50%;
+      background: rgba(212, 175, 55, 0.4);
+      animation: floatParticle 6s ease-in-out infinite;
+    }
+    .bg-particle:nth-child(1) { top: 10%; left: 5%; animation-delay: 0s; }
+    .bg-particle:nth-child(2) { top: 30%; left: 90%; animation-delay: 1.5s; width: 6px; height: 6px; }
+    .bg-particle:nth-child(3) { top: 60%; left: 8%; animation-delay: 3s; }
+    .bg-particle:nth-child(4) { top: 80%; left: 85%; animation-delay: 4.5s; width: 5px; height: 5px; }
+    .bg-particle:nth-child(5) { top: 50%; left: 50%; animation-delay: 2s; opacity: 0.2; width: 8px; height: 8px; }
+    .bg-particle:nth-child(6) { top: 15%; left: 50%; animation-delay: 0.8s; }
+    @keyframes floatParticle {
+      0%, 100% { transform: translateY(0) scale(1); opacity: 0.4; }
+      50% { transform: translateY(-30px) scale(1.5); opacity: 0.8; }
+    }
+
+    /* ==================== 头部装饰 ==================== */
+    .header-title {
+      font-size: 28px; font-weight: 800;
+      background: linear-gradient(135deg, #f7e8a0, #d4af37, #c9a84c, #f7e8a0);
+      background-size: 200% 200%;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmerGold 3s ease-in-out infinite;
+      letter-spacing: 4px;
+    }
+    @keyframes shimmerGold {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header-sub {
+      color: rgba(212, 175, 55, 0.7);
+      font-size: 13px; letter-spacing: 6px;
+    }
+
+    /* ==================== 视频区域 ==================== */
+    .video-wrapper {
+      position: relative; border-radius: 16px; overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.15);
+      background: #000;
+    }
+    .video-wrapper video {
+      display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
+    }
+    /* 视频播放按钮覆盖层 */
+    .video-play-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.35);
+      cursor: pointer; transition: opacity 0.4s;
+      z-index: 5;
+    }
+    .video-play-overlay.hidden { opacity: 0; pointer-events: none; }
+    .video-play-overlay .play-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: rgba(212,175,55,0.9);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; color: #fff;
+      box-shadow: 0 4px 20px rgba(212,175,55,0.4);
+      transition: transform 0.3s;
+    }
+    .video-play-overlay:active .play-icon { transform: scale(0.9); }
+
+    /* 重新播放按钮 */
+    .video-replay {
+      position: absolute; bottom: 12px; right: 12px; z-index: 6;
+      background: rgba(0,0,0,0.6); color: #d4af37;
+      border: 1px solid rgba(212,175,55,0.4);
+      border-radius: 20px; padding: 6px 14px; font-size: 12px;
+      cursor: pointer; display: none; backdrop-filter: blur(4px);
+    }
+
+    /* ==================== 倒计时 ==================== */
+    .countdown-text {
+      font-size: 15px; font-weight: 500;
+      text-align: center; transition: all 0.3s;
+    }
+    .countdown-text.locked { color: rgba(255,255,255,0.6); }
+    .countdown-text.unlocked { color: #f7e8a0; }
+    .countdown-progress {
+      height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,0.1); overflow: hidden;
+      margin-top: 10px;
+    }
+    .countdown-progress-bar {
+      height: 100%; border-radius: 2px; width: 0%;
+      background: linear-gradient(90deg, #d4af37, #f7e8a0);
+      transition: width 0.3s;
+    }
+
+    /* ==================== 转盘区域 ==================== */
+    .wheel-wrapper {
+      position: relative; margin: 0 auto;
+      width: min(88vw, 340px); aspect-ratio: 1;
+    }
+    /* 转盘外圈光晕 */
+    .wheel-glow {
+      position: absolute; inset: -12px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    /* 转盘外圈装饰 */
+    .wheel-ring {
+      position: absolute; inset: -6px; border-radius: 50%;
+      border: 3px solid rgba(212,175,55,0.3);
+      pointer-events: none;
+    }
+    .wheel-ring-dots {
+      position: absolute; inset: -3px; border-radius: 50%;
+      pointer-events: none;
+    }
+    .wheel-ring-dots::before {
+      content: ''; position: absolute; inset: -4px; border-radius: 50%;
+      border: 2px dashed rgba(212,175,55,0.15);
+    }
+    .wheel-wrapper canvas {
+      display: block; width: 100%; height: 100%;
+      border-radius: 50%;
+    }
+    /* 固定指针 */
+    .wheel-pointer {
+      position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+      z-index: 10; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    }
+    .wheel-pointer svg { display: block; }
+    /* 中心抽奖按钮 */
+    .spin-btn-center {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 72px; height: 72px; border-radius: 50%; z-index: 10;
+      border: 3px solid rgba(255,255,255,0.8);
+      font-weight: 800; font-size: 17px; color: #fff;
+      letter-spacing: 2px; cursor: pointer;
+      transition: all 0.4s; user-select: none;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      line-height: 1.2;
+    }
+    .spin-btn-center.locked {
+      background: linear-gradient(135deg, #555 0%, #777 100%);
+      cursor: not-allowed; opacity: 0.7;
+    }
+    .spin-btn-center.unlocked {
+      background: linear-gradient(135deg, #d4af37 0%, #b8860b 50%, #c9a84c 100%);
+      cursor: pointer; animation: pulseGold 2s ease-in-out infinite;
+    }
+    .spin-btn-center.spinning {
+      pointer-events: none; animation: none;
+      background: linear-gradient(135deg, #888 0%, #aaa 100%);
+    }
+    .spin-btn-center.done {
+      background: linear-gradient(135deg, #2d8a4e 0%, #1a6b3a 100%);
+      cursor: default; animation: none;
+    }
+    .spin-btn-center .sub-text {
+      font-size: 9px; font-weight: 400;
+      opacity: 0.8; letter-spacing: 1px;
+    }
+    @keyframes pulseGold {
+      0%, 100% { box-shadow: 0 4px 20px rgba(212,175,55,0.3); }
+      50% { box-shadow: 0 4px 30px rgba(212,175,55,0.6); }
+    }
+
+    /* ==================== 弹窗 ==================== */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center;
+      padding: 24px;
+      animation: fadeIn 0.3s ease;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-card {
+      background: linear-gradient(160deg, #1e1e4a 0%, #2a1a3e 100%);
+      border-radius: 24px; padding: 36px 28px 32px;
+      max-width: 340px; width: 100%;
+      border: 1px solid rgba(212,175,55,0.25);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+      text-align: center;
+      animation: modalPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 12px; right: 16px;
+      background: none; border: none; color: rgba(255,255,255,0.4);
+      font-size: 22px; cursor: pointer; padding: 4px;
+      transition: color 0.2s;
+    }
+    .modal-close:hover { color: rgba(255,255,255,0.8); }
+    .modal-icon {
+      font-size: 56px; color: #d4af37; margin-bottom: 12px;
+    }
+    .modal-title {
+      font-size: 14px; color: rgba(255,255,255,0.6);
+      letter-spacing: 2px; margin-bottom: 4px;
+    }
+    .modal-prize {
+      font-size: 24px; font-weight: 700; color: #f7e8a0;
+      margin: 8px 0 20px;
+    }
+    .modal-prize .highlight { color: #e74c3c; }
+    .modal-btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: #fff; border: none; border-radius: 50px;
+      padding: 14px 36px; font-size: 17px; font-weight: 700;
+      cursor: pointer; transition: all 0.3s;
+      box-shadow: 0 6px 24px rgba(231, 76, 60, 0.4);
+      letter-spacing: 2px;
+    }
+    .modal-btn:active { transform: scale(0.96); }
+    .modal-btn i { font-size: 18px; }
+    .modal-tip {
+      font-size: 13px; color: rgba(255,255,255,0.4);
+      margin-top: 14px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+    @keyframes modalPop {
+      from { transform: scale(0.7); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* ==================== 通用 ==================== */
+    .gold-text { color: #d4af37; }
+    .gold-border { border-color: rgba(212,175,55,0.3); }
+
+    /* 右下角固定安全提示（示例文案） */
+    .footer-safe {
+      text-align: center; font-size: 11px;
+      color: rgba(255,255,255,0.2);
+      padding: 20px 16px 32px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========== 背景粒子 ========== -->
+  <div class="bg-particle"></div><div class="bg-particle"></div>
+  <div class="bg-particle"></div><div class="bg-particle"></div>
+  <div class="bg-particle"></div><div class="bg-particle"></div>
+
+  <!-- ========== 主容器 ========== -->
+  <div class="relative z-10 max-w-md mx-auto px-4 pt-6 pb-4 min-h-screen min-h-dvh flex flex-col">
+
+    <!-- ===== 头部 ===== -->
+    <div class="text-center mb-5">
+      <div class="header-title">扫码有惊喜</div>
+      <div class="header-sub mt-1">SCAN & WIN</div>
+      <div class="w-16 h-0.5 bg-gradient-to-r from-transparent via-yellow-500 to-transparent mx-auto mt-3"></div>
+    </div>
+
+    <!-- ===== 视频区域 ===== -->
+    <div class="video-wrapper mb-3">
+      <!-- ★★★ 改视频文件名：修改下方 src 属性中的 "product.mp4" 为你实际的视频文件名 ★★★ -->
+      <video id="productVideo" playsinline webkit-playsinline preload="auto" muted>
+        <source src="product.mp4" type="video/mp4">
+        您的浏览器不支持视频播放
+      </video>
+      <!-- 播放覆盖层 -->
+      <div class="video-play-overlay" id="videoPlayOverlay">
+        <div class="play-icon"><i class="fas fa-play" style="margin-left:3px;"></i></div>
+      </div>
+      <!-- 重新播放 -->
+      <button class="video-replay" id="videoReplay"><i class="fas fa-redo-alt mr-1"></i>重新播放</button>
+    </div>
+
+    <!-- ===== 倒计时 ===== -->
+    <div class="countdown-text locked mb-2" id="countdownText">
+      <i class="fas fa-clock gold-text mr-1"></i>
+      观看产品介绍 <span class="font-bold gold-text" id="countdownSeconds">30</span> 秒后开启抽奖
+    </div>
+    <div class="countdown-progress mb-3">
+      <div class="countdown-progress-bar" id="countdownProgress"></div>
+    </div>
+
+    <!-- ===== 转盘区域 ===== -->
+    <div class="flex-1 flex items-center justify-center py-2">
+      <div class="wheel-wrapper" id="wheelWrapper">
+        <div class="wheel-glow"></div>
+        <div class="wheel-ring"></div>
+        <div class="wheel-ring-dots"></div>
+
+        <!-- 指针（固定不旋转） -->
+        <div class="wheel-pointer">
+          <svg width="32" height="28" viewBox="0 0 32 28">
+            <defs>
+              <linearGradient id="pointerGrad" x1="0.5" y1="0" x2="0.5" y2="1">
+                <stop offset="0%" stop-color="#f7e8a0"/>
+                <stop offset="100%" stop-color="#b8860b"/>
+              </linearGradient>
+              <filter id="pointerShadow">
+                <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.4"/>
+              </filter>
+            </defs>
+            <polygon points="16,26 2,2 30,2" fill="url(#pointerGrad)" filter="url(#pointerShadow)"/>
+          </svg>
+        </div>
+
+        <!-- Canvas 转盘 -->
+        <canvas id="wheelCanvas"></canvas>
+
+        <!-- 中心抽奖按钮 -->
+        <button class="spin-btn-center locked" id="spinBtn">
+          <span id="spinBtnText">抽奖</span>
+          <span class="sub-text" id="spinBtnSub">观看解锁</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== 底部 ===== -->
+    <div class="footer-safe">
+      * 观看满30秒即可解锁抽奖 &nbsp;|&nbsp; 每人限参与一次
+    </div>
+  </div>
+
+  <!-- ========== 结果弹窗 ========== -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-card">
+      <button class="modal-close" id="modalClose"><i class="fas fa-times"></i></button>
+      <div class="modal-icon"><i class="fas fa-trophy"></i></div>
+      <div class="modal-title">🎉 恭喜您获得</div>
+      <div class="modal-prize" id="modalPrizeName">一等奖 电锅炉5折券</div>
+
+      <!-- ★★★ 改经理联系电话：修改下方 href 和 data-phone 中的 138-0000-0000 ★★★ -->
+      <a id="contactLink" href="tel:138-0000-0000" style="text-decoration:none;">
+        <button class="modal-btn" id="contactBtn">
+          <i class="fas fa-phone-alt"></i> 点击联系客户经理领奖
+        </button>
+      </a>
+      <div class="modal-tip"><i class="far fa-copy mr-1"></i> 点击号码可复制到剪贴板</div>
+    </div>
+  </div>
+
+  <script>
+  /**
+   * =====================================================================
+   * 🎯 抽奖配置 - 修改这里即可控制抽奖行为
+   * =====================================================================
+   * 以下 config 对象中的三个字段，修改后刷新页面即可生效。
+   * 如果你不太熟悉代码，只需修改等号后面的值即可。
+   * =====================================================================
+   */
+  var config = {
+    /**
+     * disableFirstPrize: 是否禁用一等奖
+     *   - true  : 一等奖概率被强制设为 0（永远抽不到一等奖）
+     *   - false : 正常抽奖，一等奖概率由 prizeWeights[0] 决定
+     */
+    disableFirstPrize: false,
+
+    /**
+     * prizeWeights: 1~6等奖的权重数组（共 6 个数字）
+     *   数字越大，该奖项被抽中的概率越高。
+     *   例如 [1, 5, 10, 20, 30, 34] 表示：
+     *     1等奖权重 1，2等奖权重 5 … 6等奖权重 34
+     *   所有权重之和不必是 100，程序会自动按比例计算概率。
+     *   ★ 如果 disableFirstPrize 为 true，则 prizeWeights[0] 会被强制设为 0
+     */
+    prizeWeights: [1, 5, 10, 20, 30, 34],
+
+    /**
+     * managerPhone: 客户经理的联系电话
+     *   会显示在领奖按钮上，点击可直接拨号。
+     */
+    managerPhone: "138-0000-0000"
+  };
+
+
+  // =====================================================================
+  //  以下为程序逻辑，一般不需要修改
+  // =====================================================================
+
+  // ---------- 奖品定义 ----------
+  var prizes = [
+    { full: '一等奖 电锅炉5折券',    wheel: '电锅炉\n5折券' },
+    { full: '二等奖 7折券',          wheel: '7折券' },
+    { full: '三等奖 8折券',          wheel: '8折券' },
+    { full: '四等奖 9折券',          wheel: '9折券' },
+    { full: '五等奖 去锈剂一瓶',     wheel: '去锈剂\n一瓶' },
+    { full: '六等奖 谢谢惠顾',       wheel: '谢谢惠顾' }
+  ];
+  // 每个扇区的颜色（从一等奖到六等奖）
+  var segmentColors = [
+    ['#D32F2F', '#B71C1C'],   // 一等奖 - 红色
+    ['#E65100', '#BF360C'],   // 二等奖 - 橙色
+    ['#F9A825', '#F57F17'],   // 三等奖 - 金色
+    ['#2E7D32', '#1B5E20'],   // 四等奖 - 绿色
+    ['#1565C0', '#0D47A1'],   // 五等奖 - 蓝色
+    ['#546E7A', '#37474F']    // 六等奖 - 灰色
+  ];
+  var SEG_COUNT = prizes.length;
+  var SEG_ANGLE = (2 * Math.PI) / SEG_COUNT;
+
+  // ---------- DOM 引用 ----------
+  var video = document.getElementById('productVideo');
+  var videoOverlay = document.getElementById('videoPlayOverlay');
+  var videoReplay = document.getElementById('videoReplay');
+  var countdownEl = document.getElementById('countdownText');
+  var countdownSec = document.getElementById('countdownSeconds');
+  var countdownBar = document.getElementById('countdownProgress');
+  var canvas = document.getElementById('wheelCanvas');
+  var ctx = canvas.getContext('2d');
+  var spinBtn = document.getElementById('spinBtn');
+  var spinBtnText = document.getElementById('spinBtnText');
+  var spinBtnSub = document.getElementById('spinBtnSub');
+  var modalOverlay = document.getElementById('modalOverlay');
+  var modalPrize = document.getElementById('modalPrizeName');
+  var modalClose = document.getElementById('modalClose');
+  var contactLink = document.getElementById('contactLink');
+  var contactBtn = document.getElementById('contactBtn');
+
+  // ---------- 状态 ----------
+  var watchedTime = 0;        // 已观看秒数（累计）
+  var isUnlocked = false;     // 是否已解锁
+  var isSpinning = false;     // 是否正在旋转
+  var hasSpun = false;        // 是否已抽过奖
+  var wheelRotation = 0;      // 当前转盘旋转弧度
+  var animFrameId = null;     // requestAnimationFrame ID
+  var lastVideoTime = 0;      // 用于跟踪播放进度
+  var isVideoPlaying = false;
+
+  // ---------- Canvas 尺寸适配 ----------
+  var WHEEL_SIZE = 0;
+  var DPR = 0;
+
+  function resizeCanvas() {
+    var wrapper = document.getElementById('wheelWrapper');
+    var rect = wrapper.getBoundingClientRect();
+    WHEEL_SIZE = rect.width;
+    DPR = window.devicePixelRatio || 1;
+    canvas.width = WHEEL_SIZE * DPR;
+    canvas.height = WHEEL_SIZE * DPR;
+    ctx.scale(DPR, DPR);
+    // 重新绘制
+    drawWheel(wheelRotation);
+  }
+
+  // ---------- 绘制转盘 ----------
+  function drawWheel(rotation) {
+    var c = canvas.getContext('2d');
+    var size = WHEEL_SIZE;
+    var cx = size / 2;
+    var cy = size / 2;
+    var radius = size / 2 - 4;
+
+    c.clearRect(0, 0, size, size);
+
+    c.save();
+    c.translate(cx, cy);
+    c.rotate(rotation);
+
+    // 绘制每个扇区
+    for (var i = 0; i < SEG_COUNT; i++) {
+      var startAngle = i * SEG_ANGLE - Math.PI / 2;
+      var endAngle = startAngle + SEG_ANGLE;
+
+      // 扇区渐变
+      var grad = c.createRadialGradient(0, 0, 10, 0, 0, radius);
+      grad.addColorStop(0, segmentColors[i][0]);
+      grad.addColorStop(1, segmentColors[i][1]);
+
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.arc(0, 0, radius, startAngle, endAngle);
+      c.closePath();
+      c.fillStyle = grad;
+      c.fill();
+
+      // 扇区边框
+      c.strokeStyle = 'rgba(255,255,255,0.15)';
+      c.lineWidth = 1.5;
+      c.stroke();
+
+      // 绘制奖品文字
+      c.save();
+      c.rotate(startAngle + SEG_ANGLE / 2);
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+
+      var text = prizes[i].wheel.split('\n');
+      var fontSize = (size <= 280) ? 11 : 13;
+      c.font = 'bold ' + fontSize + 'px "PingFang SC", "Microsoft YaHei", sans-serif';
+      c.fillStyle = '#fff';
+      c.shadowColor = 'rgba(0,0,0,0.5)';
+      c.shadowBlur = 3;
+
+      var textRadius = radius * 0.60;
+      for (var lineIdx = 0; lineIdx < text.length; lineIdx++) {
+        var yOff = (lineIdx - (text.length - 1) / 2) * (fontSize + 3);
+        c.fillText(text[lineIdx], textRadius, yOff);
+      }
+      c.shadowBlur = 0;
+      c.restore();
+    }
+
+    // 外圈描边
+    c.beginPath();
+    c.arc(0, 0, radius, 0, 2 * Math.PI);
+    c.strokeStyle = 'rgba(212,175,55,0.4)';
+    c.lineWidth = 2.5;
+    c.stroke();
+
+    // 内圈装饰圆环
+    c.beginPath();
+    c.arc(0, 0, radius * 0.28, 0, 2 * Math.PI);
+    c.strokeStyle = 'rgba(212,175,55,0.5)';
+    c.lineWidth = 2;
+    c.stroke();
+
+    c.restore();
+  }
+
+  // ---------- 加权随机（抽奖核心算法） ----------
+  function weightedRandom(weights) {
+    var total = 0;
+    for (var i = 0; i < weights.length; i++) total += weights[i];
+    var rand = Math.random() * total;
+    for (var i = 0; i < weights.length; i++) {
+      rand -= weights[i];
+      if (rand <= 0) return i;
+    }
+    return weights.length - 1;
+  }
+
+  // ---------- 旋转动画（先快后慢） ----------
+  function spinWheel() {
+    if (isSpinning || hasSpun || !isUnlocked) return;
+    isSpinning = true;
+    spinBtn.classList.remove('unlocked');
+    spinBtn.classList.add('spinning');
+    spinBtnText.textContent = '旋转中';
+    spinBtnSub.textContent = '';
+
+    // 1. 确定中奖索引
+    var weights = config.prizeWeights.slice();
+    if (config.disableFirstPrize) weights[0] = 0;
+    var prizeIndex = weightedRandom(weights);
+
+    // 2. 计算目标角度
+    var segAngle = (2 * Math.PI) / SEG_COUNT;
+    var targetInSegment = (0.2 + Math.random() * 0.6) * segAngle;
+    var targetAngle = prizeIndex * segAngle + targetInSegment;
+
+    // 3. 需要额外旋转的总弧度
+    var currentMod = wheelRotation % (2 * Math.PI);
+    var delta = targetAngle - currentMod;
+    if (delta < 0) delta += 2 * Math.PI;
+    var extraSpins = 5 + Math.floor(Math.random() * 3); // 5~7 圈
+    var totalDelta = delta + extraSpins * 2 * Math.PI;
+    var startRotation = wheelRotation;
+    var endRotation = startRotation + totalDelta;
+
+    // 4. 动画参数
+    var duration = 4000 + Math.random() * 1000; // 4~5 秒
+    var startTime = null;
+
+    function easeOutQuart(t) {
+      return 1 - Math.pow(1 - t, 4);
+    }
+
+    function animate(timestamp) {
+      if (!startTime) startTime = timestamp;
+      var elapsed = timestamp - startTime;
+      var progress = Math.min(elapsed / duration, 1);
+      var eased = easeOutQuart(progress);
+
+      wheelRotation = startRotation + totalDelta * eased;
+      drawWheel(wheelRotation);
+
+      if (progress < 1) {
+        animFrameId = requestAnimationFrame(animate);
+      } else {
+        // 动画结束
+        wheelRotation = endRotation;
+        drawWheel(wheelRotation);
+        isSpinning = false;
+        hasSpun = true;
+
+        spinBtn.classList.remove('spinning');
+        spinBtn.classList.add('done');
+        spinBtnText.textContent = '已抽奖';
+        spinBtnSub.textContent = '';
+
+        // 显示弹窗
+        showModal(prizeIndex);
+      }
+    }
+
+    animFrameId = requestAnimationFrame(animate);
+  }
+
+  // ---------- 弹窗 ----------
+  function showModal(prizeIndex) {
+    var prize = prizes[prizeIndex];
+    // ★★★ 改经理联系电话：修改下方电话号码 ★★★
+    var phone = config.managerPhone;
+    contactLink.href = 'tel:' + phone;
+    modalPrize.textContent = prize.full;
+    modalOverlay.classList.add('show');
+  }
+
+  function hideModal() {
+    modalOverlay.classList.remove('show');
+  }
+
+  // 点击蒙层关闭
+  modalOverlay.addEventListener('click', function(e) {
+    if (e.target === modalOverlay) hideModal();
+  });
+  modalClose.addEventListener('click', hideModal);
+
+  // 点击号码复制
+  document.querySelector('.modal-tip').addEventListener('click', function() {
+    var phone = config.managerPhone;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(phone).then(function() {
+        var tip = document.querySelector('.modal-tip');
+        tip.innerHTML = '<i class="fas fa-check mr-1"></i> 已复制到剪贴板';
+        setTimeout(function() {
+          tip.innerHTML = '<i class="far fa-copy mr-1"></i> 点击号码可复制到剪贴板';
+        }, 2000);
+      });
+    }
+  });
+
+  // ---------- 视频播放逻辑 ----------
+  function startVideo() {
+    video.play().then(function() {
+      videoOverlay.classList.add('hidden');
+      videoReplay.style.display = 'none';
+    }).catch(function() {
+      // iOS 需要用户主动点击
+    });
+  }
+
+  videoOverlay.addEventListener('click', startVideo);
+
+  videoReplay.addEventListener('click', function() {
+    video.currentTime = 0;
+    videoReplay.style.display = 'none';
+    videoOverlay.classList.remove('hidden');
+    setTimeout(function() { videoOverlay.click(); }, 100);
+  });
+
+  // 播放状态追踪
+  video.addEventListener('play', function() {
+    isVideoPlaying = true;
+    lastVideoTime = video.currentTime;
+  });
+
+  video.addEventListener('pause', function() {
+    isVideoPlaying = false;
+  });
+
+  video.addEventListener('timeupdate', function() {
+    if (!isVideoPlaying) return;
+    var currentTime = video.currentTime;
+    if (currentTime > lastVideoTime) {
+      var delta = currentTime - lastVideoTime;
+      if (delta > 0 && delta < 3) {
+        watchedTime += delta;
+        updateCountdown();
+      }
+    }
+    lastVideoTime = currentTime;
+  });
+
+  video.addEventListener('ended', function() {
+    isVideoPlaying = false;
+    videoReplay.style.display = 'block';
+  });
+
+  // 用户拖拽进度条时重置追踪点
+  video.addEventListener('seeking', function() {
+    lastVideoTime = video.currentTime;
+  });
+
+  // ---------- 倒计时更新 ----------
+  function updateCountdown() {
+    var remaining = Math.max(0, 30 - watchedTime);
+    var progress = Math.min(watchedTime / 30, 1);
+
+    countdownSec.textContent = Math.ceil(remaining);
+    countdownBar.style.width = (progress * 100) + '%';
+
+    if (!isUnlocked && watchedTime >= 30) {
+      isUnlocked = true;
+      unlockLottery();
+    }
+  }
+
+  function unlockLottery() {
+    countdownEl.classList.remove('locked');
+    countdownEl.classList.add('unlocked');
+    countdownEl.innerHTML = '<i class="fas fa-unlock-alt mr-1"></i> 🎉 已解锁！点击转盘中心按钮抽奖';
+
+    spinBtn.classList.remove('locked');
+    spinBtn.classList.add('unlocked');
+    spinBtnSub.textContent = '点击抽奖';
+  }
+
+  // ---------- 抽奖按钮 ----------
+  spinBtn.addEventListener('click', spinWheel);
+
+  // ---------- 窗口尺寸变化 ----------
+  var resizeTimer = null;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      resizeCanvas();
+    }, 200);
+  });
+
+  // ---------- 初始化 ----------
+  function init() {
+    resizeCanvas();
+    // 更新联系号码
+    contactLink.href = 'tel:' + config.managerPhone;
+  }
+
+  // DOM 就绪后初始化
+  if (document.readyState === 'complete') {
+    init();
+  } else {
+    window.addEventListener('load', init);
+  }
+  </script>
+</body>
+</html>
